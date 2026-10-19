@@ -1,1 +1,286 @@
-<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>A&M Formfabrik 3D Kalkulator Pro</title><meta name="theme-color" content="#6a35ff"><link rel="manifest" href="manifest.json"><style>body{font-family:Arial,sans-serif;background:#111;color:#fff;margin:0;padding:20px}.card{max-width:700px;margin:auto;background:#1e1e1e;padding:20px;border-radius:16px}input{width:100%;padding:12px;margin:6px 0 12px;border-radius:8px;border:none}button{width:100%;padding:12px;background:#6a35ff;color:#fff;border:none;border-radius:10px}.res{margin-top:15px;line-height:1.8}</style></head><body><div class="card"><h2>A&M Formfabrik 3D Kalkulator Pro</h2><input id="g" type="number" placeholder="Filament in g"><input id="h" type="number" step="0.1" placeholder="Druckzeit in Stunden"><input id="kg" type="number" value="20" placeholder="Filamentpreis €/kg"><input id="m" type="number" value="3" step="0.1" placeholder="Gewinnfaktor"><button onclick="calc()">Preis berechnen</button><div class="res" id="out"></div></div><script>function calc(){let g=+gEl.value,h=+hEl.value,kg=+kgEl.value,m=+mEl.value;let material=g*(kg/1000);let maschine=h*0.15;let kosten=material+maschine;let preis=kosten*m;out.innerHTML=`Material: ${material.toFixed(2)} €<br>Maschine: ${maschine.toFixed(2)} €<br>Herstellung: ${kosten.toFixed(2)} €<br><b>Verkaufspreis: ${preis.toFixed(2)} €</b>`;}const gEl=document.getElementById('g'),hEl=document.getElementById('h'),kgEl=document.getElementById('kg'),mEl=document.getElementById('m'),out=document.getElementById('out');if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js')}</script></body></html>
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A&M Formfabrik 3D Kalkulator Pro v2.0</title>
+
+<style>
+body{
+    font-family: Arial, sans-serif;
+    background:#0d0d0d;
+    color:white;
+    margin:0;
+    padding:20px;
+}
+
+.container{
+    max-width:800px;
+    margin:auto;
+}
+
+.card{
+    background:#1b1b1b;
+    border-radius:15px;
+    padding:20px;
+    margin-bottom:20px;
+}
+
+h1,h2{
+    margin-top:0;
+}
+
+.dashboard{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:10px;
+}
+
+.stat{
+    background:#2a2a2a;
+    border-radius:12px;
+    padding:15px;
+    text-align:center;
+}
+
+.stat-value{
+    font-size:22px;
+    font-weight:bold;
+    color:#7a4dff;
+}
+
+input{
+    width:100%;
+    box-sizing:border-box;
+    margin-bottom:10px;
+    padding:12px;
+    border:none;
+    border-radius:10px;
+    font-size:16px;
+}
+
+button{
+    width:100%;
+    padding:14px;
+    border:none;
+    border-radius:10px;
+    background:#6a35ff;
+    color:white;
+    font-size:16px;
+    cursor:pointer;
+    margin-top:5px;
+}
+
+button:hover{
+    background:#7f54ff;
+}
+
+.result{
+    margin-top:15px;
+    background:#2a2a2a;
+    padding:15px;
+    border-radius:10px;
+}
+
+.project{
+    background:#2a2a2a;
+    padding:12px;
+    border-radius:10px;
+    margin-bottom:10px;
+}
+
+.small{
+    color:#cccccc;
+    font-size:14px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="card">
+        <h1>A&M Formfabrik 3D</h1>
+
+        <div class="dashboard">
+
+            <div class="stat">
+                <div>Projekte</div>
+                <div class="stat-value" id="projectCount">0</div>
+            </div>
+
+            <div class="stat">
+                <div>Letzter Preis</div>
+                <div class="stat-value" id="lastPrice">0 €</div>
+            </div>
+
+            <div class="stat">
+                <div>Filament gesamt</div>
+                <div class="stat-value" id="totalFilament">0 g</div>
+            </div>
+
+            <div class="stat">
+                <div>Letztes Projekt</div>
+                <div class="stat-value" id="lastProject">-</div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="card">
+
+        <h2>Preisrechner</h2>
+
+        <input id="projectName" placeholder="Projektname">
+
+        <input id="customer" placeholder="Kunde (optional)">
+
+        <input id="filament" type="number" placeholder="Filament in g">
+
+        <input id="hours" type="number" step="0.1" placeholder="Druckzeit in Stunden">
+
+        <input id="priceKg" type="number" value="20">
+
+        <input id="factor" type="number" value="3" step="0.1">
+
+        <button onclick="calculate()">
+            Preis berechnen
+        </button>
+
+        <div class="result" id="result">
+            Noch keine Berechnung.
+        </div>
+
+        <button onclick="saveProject()">
+            Projekt speichern
+        </button>
+
+    </div>
+
+    <div class="card">
+
+        <h2>Gespeicherte Projekte</h2>
+
+        <div id="projects">
+            Keine Projekte vorhanden.
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+let currentPrice = 0;
+
+function calculate(){
+
+    let filament = parseFloat(document.getElementById("filament").value) || 0;
+    let hours = parseFloat(document.getElementById("hours").value) || 0;
+    let kgPrice = parseFloat(document.getElementById("priceKg").value) || 20;
+    let factor = parseFloat(document.getElementById("factor").value) || 3;
+
+    let material = filament * (kgPrice / 1000);
+    let machine = hours * 0.15;
+
+    let total = material + machine;
+
+    currentPrice = total * factor;
+
+    document.getElementById("result").innerHTML = `
+        Materialkosten: ${material.toFixed(2)} €<br>
+        Maschinenkosten: ${machine.toFixed(2)} €<br>
+        Herstellungskosten: ${total.toFixed(2)} €<br><br>
+        <strong>Verkaufspreis: ${currentPrice.toFixed(2)} €</strong>
+    `;
+}
+
+function saveProject(){
+
+    let name = document.getElementById("projectName").value;
+
+    if(name === ""){
+        alert("Bitte Projektnamen eingeben.");
+        return;
+    }
+
+    let customer = document.getElementById("customer").value;
+    let filament = document.getElementById("filament").value;
+    let date = new Date().toLocaleDateString();
+
+    let project = {
+        name,
+        customer,
+        filament,
+        price: currentPrice.toFixed(2),
+        date
+    };
+
+    let projects =
+        JSON.parse(localStorage.getItem("projects")) || [];
+
+    projects.unshift(project);
+
+    localStorage.setItem(
+        "projects",
+        JSON.stringify(projects)
+    );
+
+    loadProjects();
+}
+
+function loadProjects(){
+
+    let projects =
+        JSON.parse(localStorage.getItem("projects")) || [];
+
+    let html = "";
+
+    let totalFilament = 0;
+
+    projects.forEach(p => {
+
+        totalFilament += Number(p.filament || 0);
+
+        html += `
+        <div class="project">
+
+            <strong>${p.name}</strong><br>
+
+            <span class="small">
+            Kunde: ${p.customer || "-"}<br>
+            Preis: ${p.price} €<br>
+            Filament: ${p.filament} g<br>
+            Datum: ${p.date}
+            </span>
+
+        </div>
+        `;
+    });
+
+    document.getElementById("projects").innerHTML =
+        html || "Keine Projekte vorhanden.";
+
+    document.getElementById("projectCount").innerText =
+        projects.length;
+
+    document.getElementById("totalFilament").innerText =
+        totalFilament + " g";
+
+    if(projects.length > 0){
+
+        document.getElementById("lastPrice").innerText =
+            projects[0].price + " €";
+
+        document.getElementById("lastProject").innerText =
+            projects[0].name;
+    }
+}
+
+loadProjects();
+
+</script>
+
+</body>
+</html>
